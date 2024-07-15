@@ -79,3 +79,4 @@ class BaseModel(pl.LightningModule):
 
     def on_test_epoch_end(self):
         print("\n test roc auc : ", sum(roc_aucs) / len(roc_aucs))
+

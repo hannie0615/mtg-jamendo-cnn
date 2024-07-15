@@ -10,9 +10,9 @@ import pytorch_lightning as pl
 from dataloader import data_load
 
 config = {
-    'epochs': 3,    # 200
+    'epochs': 10,    # 200
     'batch_size': 32,
-    'root': './data/melspecs_5',
+    'root': 'D:/Mtg-jamendo-dataset/melspecs_aug_3',
     'tag_path': './tags',
     'model_save_path': './trained/ensemble1/'
 }

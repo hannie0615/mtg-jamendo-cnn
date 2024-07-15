@@ -23,7 +23,7 @@ def initialize_weights(module):
         module.bias.data.zero_()
 
 config = {
-    'epochs': 10,    # 200
+    'epochs': 10,    # => test roc auc : 0.7479618212865566
     'batch_size': 32,
     'root': 'D:/Mtg-jamendo-dataset/melspecs',
     'tag_path': './tags',
@@ -49,14 +49,14 @@ def run():
         os.makedirs(model_save_path)
 
     # 데이터 로더 만들기
-    train_data, val_data, test_data = data_load(root=config['root'], tag=config['tag_path'])
-    print(len(train_data))
-    print(len(val_data))
-    print(len(test_data))
+    train_dataset, val_dataset, test_dataset = data_load(root=config['root'], tag=config['tag_path'], annotation=False)
+    print(len(train_dataset))
+    print(len(val_dataset))
+    print(len(test_dataset))
 
-    train_dataloader = DataLoader(train_data, batch_size=batch_size, shuffle=True, num_workers=0)
-    val_dataloader = DataLoader(val_data, batch_size=batch_size, shuffle=True, num_workers=0)
-    test_dataloader = DataLoader(test_data, batch_size=batch_size, shuffle=True, num_workers=0)
+    train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=0)
+    val_dataloader = DataLoader(val_dataset, batch_size=batch_size, shuffle=True, num_workers=0)
+    test_dataloader = DataLoader(test_dataset, batch_size=batch_size, shuffle=True, num_workers=0)
 
     model = FaResNet(BasicBlock)
     print(model)

@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import numpy as np
 import pytorch_lightning as pl
 from sklearn.metrics import roc_auc_score
 
@@ -13,12 +14,15 @@ class FaResNet(pl.LightningModule):
         self.dilaion = 1
         base_channels = 128
         depth = 26
-        self.learning_rate = 0.01
+        self.num_class = 56
+        self.learning_rate = 0.001
         n_channels = [
             base_channels,
             base_channels * 2 * block.expansion,    # expansion=1
             base_channels * 4 * block.expansion
         ]
+        self.prd_array = []
+        self.gt_array = []
 
         # self.c1
         self.conv1 = nn.Conv2d(1, 128, kernel_size=7, stride=2, padding=3)
@@ -32,15 +36,25 @@ class FaResNet(pl.LightningModule):
         self.stage1 = self._make_stage(
             n_channels[0], n_channels[0], n_blocks_per_stage, block, stride=1, maxpool=[1, 2, 4],
             k1s=[3, 3, 3, 3], k2s=[1, 3, 3, 3])
+        self.dropout1 = nn.Dropout(0.5)
         self.stage2 = self._make_stage(
             n_channels[0], n_channels[0], n_blocks_per_stage, block, stride=1, maxpool=[],
             k1s=[3, 1, 1, 1], k2s=[1, 1, 1, 1])
+        self.dropout2 = nn.Dropout(0.5)
         self.stage3 = self._make_stage(
             n_channels[0], n_channels[0], n_blocks_per_stage, block, stride=1, maxpool=[],
             k1s=[1, 1, 1, 1], k2s=[1, 1, 1, 1])
+        self.dropout3 = nn.Dropout(0.5)
 
         self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
         self.fc = nn.Linear(128, num_classes)
+        self.tag_list = self.read_taglist()
+        self.roc_auc = []
+
+    def read_taglist(self):
+        fn = 'C:/Users/KETI/moodwalk-master/moodwalk-master/scripts/models/tag_list.npy'
+        npy = np.load(fn)
+        return npy
 
     def forward(self, x):
         x = x.unsqueeze(1)
@@ -52,8 +66,11 @@ class FaResNet(pl.LightningModule):
         x = self.maxpool(x)
 
         x = self.stage1(x)
+        x = self.dropout1(x)
         x = self.stage2(x)
+        x = self.dropout2(x)
         x = self.stage3(x)
+        x = self.dropout3(x)
 
         x = self.avgpool(x)
         x = x.squeeze(2).squeeze(2)
@@ -102,7 +119,21 @@ class FaResNet(pl.LightningModule):
         # y_hat = y_hat.squeeze(2)
         loss = F.cross_entropy(y_hat, y)
 
-        return {'loss': loss}
+        # for prd in y_hat.cpu():
+        #     self.prd_array.append(list(np.array(prd)))
+        # for gt in y.cpu():
+        #     self.gt_array.append(list(np.array(gt)))
+
+        return {'val_loss': loss}
+
+    # def on_validation_end(self):
+    #     if len(self.prd_array) > 0:
+    #         roc_auc, pr_auc, _, _ = self.get_auc(self.prd_array, self.gt_array)
+    #         print(roc_auc, pr_auc)
+    #     # 초기화
+    #     self.prd_array = []
+    #     self.gt_array = []
+
 
     def test_step(self, batch, batch_idx):
         x, y, _ = batch
@@ -111,15 +142,43 @@ class FaResNet(pl.LightningModule):
         loss = F.cross_entropy(logits, y)
         y = y.float()
         y_hat = y_hat.float()
-        y_hat_probs = F.softmax(y_hat, dim=1)
-        rocauc = roc_auc_score(y.t().cpu(), y_hat_probs.t().cpu())
+
+        # print(y.shape) # torch.Size([32, 56])
+        # print(y_hat.shape) # torch.Size([32, 56])
+
+        rocauc = roc_auc_score(y.t().cpu(), y_hat.t().cpu(), labels=56)
         roc_aucs.append(rocauc)
+
+        for prd in y_hat.cpu():
+            self.prd_array.append(list(np.array(prd)))
+        for gt in y.cpu():
+            self.gt_array.append(list(np.array(gt)))
 
         return {'loss': loss}
 
     def on_test_epoch_end(self):
         print("\n test roc auc : ", sum(roc_aucs) / len(roc_aucs))
+        roc_auc, pr_auc, _, _ = self.get_auc(self.prd_array, self.gt_array)
+        print(roc_auc, pr_auc)
 
+
+    def get_auc(self, prd_array, gt_array):
+        from sklearn import metrics
+        prd_array = np.array(prd_array)
+        gt_array = np.array(gt_array)
+
+        roc_aucs = metrics.roc_auc_score(gt_array, prd_array, average='macro')
+        pr_aucs = metrics.average_precision_score(gt_array, prd_array, average='macro')
+
+        print('roc_auc: %.4f' % roc_aucs)
+        print('pr_auc: %.4f' % pr_aucs)
+
+        roc_auc_all = metrics.roc_auc_score(gt_array, prd_array, average=None)
+        pr_auc_all = metrics.average_precision_score(gt_array, prd_array, average=None)
+
+        for i in range(self.num_class):
+            print('%s,%.4f,%.4f' % (self.tag_list[i], roc_auc_all[i], pr_auc_all[i]))
+        return roc_aucs, pr_aucs, roc_auc_all, pr_auc_all
 
 
 class AttentionAvg(nn.Module):
