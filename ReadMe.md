@@ -24,6 +24,12 @@ _A. 학습 시 데이터를 로드하는 시간 단축_
 
 
 ### 실행문
+
+- 가상환경 설정
+```commandline
+pip install -r requirements.txt
+```
+
 ```
 # baseline 실행
 > python exp_baseline_lightning.py
