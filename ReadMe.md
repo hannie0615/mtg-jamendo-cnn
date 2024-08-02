@@ -26,6 +26,7 @@ _A. 학습 시 데이터를 로드하는 시간 단축_
 ### 실행문
 
 - 가상환경 설정
+- - numpy 버전은 1.xx.xx 버전으로 설치해야 함(lightning 버전 충돌 issue) 
 ```commandline
 pip install -r requirements.txt
 ```
