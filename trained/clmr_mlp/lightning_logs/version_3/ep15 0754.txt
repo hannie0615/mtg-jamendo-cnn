@@ -1,0 +1,5 @@
+Testing DataLoader 0: 100%|██████████| 133/133 [00:03<00:00, 36.50it/s]
+ test roc auc :  0.754649874738539
+Testing DataLoader 0: 100%|██████████| 133/133 [00:03<00:00, 36.50it/s]
+
+Process finished with exit code 0
