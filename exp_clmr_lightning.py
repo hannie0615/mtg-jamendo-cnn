@@ -1,5 +1,5 @@
 from models.baseline_model import BaseModel
-from models.CLMR_model import CLMRBaseModel, CLMR_CNN, CLMR_classifier
+from models.clmr_model import CLMRBaseModel, CLMR_CNN, CLMR_classifier
 
 import os
 from pytorch_lightning.callbacks import ModelCheckpoint
@@ -8,12 +8,13 @@ from pytorch_lightning import Trainer
 from dataloader import data_load, data_clmr_load
 
 config = {
-    'epochs': 10,    # 200
+    'epochs': 200,    # 200
     'batch_size': 32,
     'root': './data/melspecs_5',
-    'root2' : 'D:/Dcase-task1/mel',
+    # 'root2': 'D:/Dcase-task1/mel',
+    # 'root3': 'D:/GTZAN/mel',
     'tag_path': './tags',
-    'model_save_path': './trained/clmr/mlp'
+    'model_save_path': './trained/clmr_mlp'
 }   # tag path 는 그냥 tag path.
 
 def run():
@@ -34,7 +35,8 @@ def run():
     val_dataloader = DataLoader(val_data, batch_size=batch_size, shuffle=True, num_workers=0)
     test_dataloader = DataLoader(test_data, batch_size=batch_size, shuffle=False, num_workers=0)
 
-    model = CLMRBaseModel(batch_size=batch_size)
+    # model = CLMRBaseModel(batch_size=batch_size)
+    model = CLMRBaseModel.load_from_checkpoint('trained/clmr_mlp/epoch=5-step=1866.ckpt')
     print(model)
 
     # 체크 포인트 선언 ModelCheckpoint -> 왜 _init_ 오류가..?
@@ -43,7 +45,7 @@ def run():
     )
 
     trainer = Trainer(max_epochs=epochs, default_root_dir=model_save_path)
-    trainer.fit(model, train_dataloader, val_dataloader)
+    # trainer.fit(model, train_dataloader, val_dataloader)
     trainer.test(model, test_dataloader)
 
 def cnn_run():
@@ -56,7 +58,10 @@ def cnn_run():
         os.makedirs(model_save_path)
 
     # 데이터 로더 만들기
-    train_data = data_clmr_load(root=config['root2'])
+    train_data1 = data_clmr_load(root=config['root2'])
+    train_data2 = data_clmr_load(root=config['root3'])
+    train_data = train_data1+train_data2
+
 
     rest = len(train_data) % 32
     train_data = train_data[:-rest]
@@ -66,9 +71,7 @@ def cnn_run():
     print(model)
 
     # 체크 포인트 선언 ModelCheckpoint -> 왜 _init_ 오류가..?
-    checkpoint = ModelCheckpoint(
-        dirpath=model_save_path
-    )
+
     trainer = Trainer(max_epochs=epochs, default_root_dir=model_save_path)
     trainer.fit(model, train_dataloader)
 
@@ -85,18 +88,24 @@ def mlp_run():
     train_data, val_data, test_data = data_load(root=config['root'], tag=config['tag_path'])
 
     train_dataloader = DataLoader(train_data, batch_size=batch_size, shuffle=True, num_workers=0)
-    val_dataloader = DataLoader(val_data, batch_size=batch_size, shuffle=True, num_workers=0)
+    val_dataloader = DataLoader(val_data, batch_size=batch_size, shuffle=False, num_workers=0)
     test_dataloader = DataLoader(test_data, batch_size=batch_size, shuffle=False, num_workers=0)
 
     model = CLMR_classifier(batch_size=batch_size)
+    # model = CLMR_classifier.load_from_checkpoint('trained/clmr_mlp/lightning_logs/version_3/epoch=31-step=9952.ckpt')
     print(model)
 
     # 체크 포인트 선언 ModelCheckpoint -> 왜 _init_ 오류가..?
-    checkpoint = ModelCheckpoint(
-        dirpath=model_save_path
+    checkpoint_callback = ModelCheckpoint(
+        save_top_k=10,
+        monitor="val_loss",
+        mode="min",
+        dirpath=model_save_path,
+        filename="sample-mtg-{epoch:02d}-{val_loss:.2f}",
     )
+    trainer = Trainer(max_epochs=epochs, callbacks=[checkpoint_callback])
+    # trainer = Trainer(max_epochs=epochs, default_root_dir=model_save_path)
 
-    trainer = Trainer(max_epochs=epochs, default_root_dir=model_save_path)
     trainer.fit(model, train_dataloader, val_dataloader)
     trainer.test(model, test_dataloader)
 
