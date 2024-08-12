@@ -4,12 +4,20 @@ import torch.nn.functional as F
 import numpy as np
 import pytorch_lightning as pl
 from sklearn.metrics import roc_auc_score
+from models.resnet_arch import BasicBlock
 
 roc_aucs = []
 
 class FaResNet(pl.LightningModule):
-    def __init__(self, block, num_classes=56):
+    def __init__(self, block=BasicBlock, num_classes=56):
         super(FaResNet, self).__init__()
+        self.roc_aucs = []
+        self.train_loss = []
+        self.valid_loss = []
+        self.valid_total_loss = []
+        self.train_total_loss = []
+
+        self.block = block
         self.inplanes = 64
         self.dilaion = 1
         base_channels = 128
@@ -18,8 +26,8 @@ class FaResNet(pl.LightningModule):
         self.learning_rate = 0.001
         n_channels = [
             base_channels,
-            base_channels * 2 * block.expansion,    # expansion=1
-            base_channels * 4 * block.expansion
+            base_channels * 2 * self.block.expansion,    # expansion=1
+            base_channels * 4 * self.block.expansion
         ]
         self.prd_array = []
         self.gt_array = []
@@ -34,15 +42,15 @@ class FaResNet(pl.LightningModule):
         n_blocks_per_stage = 4
 
         self.stage1 = self._make_stage(
-            n_channels[0], n_channels[0], n_blocks_per_stage, block, stride=1, maxpool=[1, 2, 4],
+            n_channels[0], n_channels[0], n_blocks_per_stage, self.block, stride=1, maxpool=[1, 2, 4],
             k1s=[3, 3, 3, 3], k2s=[1, 3, 3, 3])
         self.dropout1 = nn.Dropout(0.5)
         self.stage2 = self._make_stage(
-            n_channels[0], n_channels[0], n_blocks_per_stage, block, stride=1, maxpool=[],
+            n_channels[0], n_channels[0], n_blocks_per_stage, self.block, stride=1, maxpool=[],
             k1s=[3, 1, 1, 1], k2s=[1, 1, 1, 1])
         self.dropout2 = nn.Dropout(0.5)
         self.stage3 = self._make_stage(
-            n_channels[0], n_channels[0], n_blocks_per_stage, block, stride=1, maxpool=[],
+            n_channels[0], n_channels[0], n_blocks_per_stage, self.block, stride=1, maxpool=[],
             k1s=[1, 1, 1, 1], k2s=[1, 1, 1, 1])
         self.dropout3 = nn.Dropout(0.5)
 
@@ -107,8 +115,14 @@ class FaResNet(pl.LightningModule):
         y = y.float()
         y_hat = y_hat.float()
         loss = F.cross_entropy(y_hat, y)
+        self.train_total_loss.append(loss)
 
         return {'loss': loss}
+
+    def on_train_epoch_end(self):
+        print("\n train loss : ", sum(self.train_total_loss) / len(self.train_total_loss))
+        self.train_loss.append(sum(self.train_total_loss) / len(self.train_total_loss))
+        self.train_total_loss = []
 
     def validation_step(self, batch, batch_idx):
         x, y, _ = batch
@@ -118,6 +132,10 @@ class FaResNet(pl.LightningModule):
         # y = y.unsqueeze(1)
         # y_hat = y_hat.squeeze(2)
         loss = F.cross_entropy(y_hat, y)
+        rocauc = roc_auc_score(y.t().cpu(), y_hat.t().cpu())
+        self.roc_aucs.append(rocauc)
+        self.valid_total_loss.append(loss)
+        self.log("val_loss", torch.tensor([loss]))
 
         # for prd in y_hat.cpu():
         #     self.prd_array.append(list(np.array(prd)))
@@ -134,6 +152,12 @@ class FaResNet(pl.LightningModule):
     #     self.prd_array = []
     #     self.gt_array = []
 
+    def on_validation_epoch_end(self):
+        print("\n valid loss : ", sum(self.valid_total_loss) / len(self.valid_total_loss))
+        self.valid_loss.append(sum(self.valid_total_loss) / len(self.valid_total_loss))
+        self.valid_total_loss = []
+        print("\n valid roc auc : ", sum(self.roc_aucs) / len(self.roc_aucs))
+        self.roc_aucs = []
 
     def test_step(self, batch, batch_idx):
         x, y, _ = batch
@@ -146,8 +170,8 @@ class FaResNet(pl.LightningModule):
         # print(y.shape) # torch.Size([32, 56])
         # print(y_hat.shape) # torch.Size([32, 56])
 
-        rocauc = roc_auc_score(y.t().cpu(), y_hat.t().cpu(), labels=56)
-        roc_aucs.append(rocauc)
+        rocauc = roc_auc_score(y.t().cpu(), y_hat.t().cpu())
+        self.roc_aucs.append(rocauc)
 
         for prd in y_hat.cpu():
             self.prd_array.append(list(np.array(prd)))
@@ -157,7 +181,8 @@ class FaResNet(pl.LightningModule):
         return {'loss': loss}
 
     def on_test_epoch_end(self):
-        print("\n test roc auc : ", sum(roc_aucs) / len(roc_aucs))
+        print("\n test roc auc : ", sum(self.roc_aucs) / len(self.roc_aucs))
+        self.roc_aucs = []
         roc_auc, pr_auc, _, _ = self.get_auc(self.prd_array, self.gt_array)
         print(roc_auc, pr_auc)
 

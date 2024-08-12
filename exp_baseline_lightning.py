@@ -37,12 +37,15 @@ def run():
     model = BaseModel()
     print(model)
 
-    # 체크 포인트 선언 ModelCheckpoint -> 왜 _init_ 오류?
     checkpoint = ModelCheckpoint(
-        dirpath=model_save_path
+        save_top_k=1,
+        monitor="val_loss",
+        mode="min",
+        dirpath=model_save_path,
+        filename="baseline-{epoch:02d}-{val_loss:.2f}",
     )
 
-    trainer = Trainer(max_epochs=epochs, default_root_dir=model_save_path)
+    trainer = Trainer(max_epochs=epochs, callbacks=[checkpoint])
     trainer.fit(model, train_dataloader, val_dataloader)
     trainer.test(model, test_dataloader)
 

@@ -12,7 +12,7 @@ from dataloader import data_load
 config = {
     'epochs': 10,    # 200
     'batch_size': 32,
-    'root': 'D:/Mtg-jamendo-dataset/melspecs_aug_3',
+    'root': './data/melspecs_5',
     'tag_path': './tags',
     'model_save_path': './trained/ensemble1/'
 }
@@ -35,19 +35,24 @@ def run():
     train_data, val_data, test_data = data_load(root=config['root'], tag=config['tag_path'])
 
     train_dataloader = DataLoader(train_data, batch_size=batch_size, shuffle=True, num_workers=0)
-    val_dataloader = DataLoader(val_data, batch_size=batch_size, shuffle=True, num_workers=0)
-    test_dataloader = DataLoader(test_data, batch_size=batch_size, shuffle=True, num_workers=0)
+    val_dataloader = DataLoader(val_data, batch_size=batch_size, shuffle=False, num_workers=0)
+    test_dataloader = DataLoader(test_data, batch_size=batch_size, shuffle=False, num_workers=0)
 
     # 모델 초기화
     model1 = ResNet34()
     model2 = CRNN_esb()
 
     # 모델 앙상블
-    ensemble_model = MyEnsemble1(model1, model2)
+    eensemble_model = MyEnsemble1()
+    # ensemble_model = MyEnsemble1.load_from_checkpoint('trained/ensemble1/resnet+crnn-epoch=141-val_loss=0.13.ckpt')
 
     # Save model
     checkpoint = ModelCheckpoint(
-        dirpath=config['model_save_path'],
+        save_top_k=1,
+        monitor="val_loss",
+        mode="min",
+        dirpath=model_save_path,
+        filename="resnet+crnn-{epoch:02d}-{val_loss:.2f}",
     )
     trainer = pl.Trainer(max_epochs=epochs, callbacks=[checkpoint])
 

@@ -115,12 +115,11 @@ class CLMRBaseModel(pl.LightningModule):
         x, y, _ = batch
         logits = self(x)
         # acc = FM.accuracy(logits, y)     # `task` 추가: to either be `'binary'`, `'multiclass'` or `'multilabel'` but got class
-        val_loss = F.cross_entropy(logits, y)
+        loss = F.cross_entropy(logits, y)
         rocauc = roc_auc_score(y.t().cpu(), logits.t().cpu())
         self.roc_aucs.append(rocauc)
-        self.log('val_loss', val_loss, prog_bar=True)
 
-        return val_loss
+        return loss
 
     def on_validation_epoch_end(self):
         print("\n valid roc auc : ", sum(self.roc_aucs) / len(self.roc_aucs))
@@ -257,15 +256,14 @@ class CLMR_classifier(pl.LightningModule):
         rocauc = roc_auc_score(y.t().cpu(), logits.t().cpu())
         self.roc_aucs.append(rocauc)
         self.valid_total_loss.append(loss)
-        self.log('val_loss', loss, prog_bar=True)
         return loss
 
     def on_validation_epoch_end(self):
         print("\n valid loss : ", sum(self.valid_total_loss) / len(self.valid_total_loss))
-        print("\n valid roc auc : ", sum(self.roc_aucs) / len(self.roc_aucs))
-        self.roc_aucs = []
         self.valid_loss.append(sum(self.valid_total_loss) / len(self.valid_total_loss))
         self.valid_total_loss = []
+        print("\n valid roc auc : ", sum(self.roc_aucs) / len(self.roc_aucs))
+        self.roc_aucs = []
 
     def test_step(self, batch, batch_idx):
         x, y, _ = batch
@@ -282,4 +280,14 @@ class CLMR_classifier(pl.LightningModule):
     def on_test_epoch_end(self):
         print("\n test roc auc : ", sum(self.roc_aucs) / len(self.roc_aucs))
         self.roc_aucs = []
+        self.loss_plot(self.train_loss, self.valid_loss)
+
+    def loss_plot(self, list1, list2):
+        import matplotlib.pyplot as plt
+        plt.plot(list1, label=str(list1)[:5])
+        plt.plot(list2, label=str(list2)[:5])
+        plt.xlabel('Epoch')
+        plt.ylabel('loss')
+        plt.title('Training Loss over Epochs')
+
 

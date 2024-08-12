@@ -15,7 +15,12 @@ class VggNet(pl.LightningModule):
     def __init__(self):
         super(VggNet, self).__init__()
         self.num_tags = 8
-        self.learning_rate = 0.01
+        self.learning_rate = 1e-3
+        self.roc_aucs = []
+        self.train_loss = []
+        self.valid_loss = []
+        self.valid_total_loss = []
+        self.train_total_loss = []
 
         self.conv1 = nn.Sequential(
             nn.Conv2d(1, 64, 5, 2, 2),  # (in_channels, out_channels, kernel_size, stride, padding)
@@ -143,10 +148,15 @@ class VggNet(pl.LightningModule):
 
         y = y.float()
         y_hat = y_hat.float()
-        # y = y.float().detach().cpu()
-        # y_hat = y_hat.float().detach().cpu()
+        loss = self.my_loss(y_hat, y)
+        self.train_total_loss.append(loss)
 
-        return {'loss': self.my_loss(y_hat, y)}
+        return {'loss': loss}
+
+    def on_train_epoch_end(self):
+        print("\n train loss : ", sum(self.train_total_loss) / len(self.train_total_loss))
+        self.train_loss.append(sum(self.train_total_loss) / len(self.train_total_loss))
+        self.train_total_loss = []
 
     def validation_step(self, batch, batch_idx):
         x, y, _ = batch
@@ -156,8 +166,19 @@ class VggNet(pl.LightningModule):
         y = y.float()
         y_hat = y_hat.float()
         rocauc = roc_auc_score(y.t().cpu(), y_hat.t().cpu(), average='macro')
+        loss = self.my_loss(y_hat, y)
+        self.roc_aucs.append(rocauc)
+        self.valid_total_loss.append(loss)
+        self.log("val_loss", torch.tensor([loss]))
 
-        return {'val_loss': self.my_loss(y_hat, y), 'roc_auc': rocauc}
+        return {'val_loss': loss}
+
+    def on_validation_epoch_end(self):
+        print("\n valid loss : ", sum(self.valid_total_loss) / len(self.valid_total_loss))
+        self.valid_loss.append(sum(self.valid_total_loss) / len(self.valid_total_loss))
+        self.valid_total_loss = []
+        print("\n valid roc auc : ", sum(self.roc_aucs) / len(self.roc_aucs))
+        self.roc_aucs = []
 
     def test_step(self, batch, batch_idx):
         x, y, _ = batch     # images, labels
@@ -165,7 +186,7 @@ class VggNet(pl.LightningModule):
         y = y.float()
         y_hat = y_hat.float()
         rocauc = roc_auc_score(y.t().cpu(), y_hat.t().cpu(), average='macro')
-        roc_aucs.append(rocauc)
+        self.roc_aucs.append(rocauc)
 
         return {'loss': self.my_loss(y_hat, y), 'roc auc': rocauc}
 
@@ -182,5 +203,6 @@ class VggNet(pl.LightningModule):
         return {'val_loss': avg_loss, 'rocauc': avg_auc}
 
     def on_test_epoch_end(self):
-        print("\n test roc auc : ", sum(roc_aucs) / len(roc_aucs))
+        print("\n test roc auc : ", sum(self.roc_aucs) / len(self.roc_aucs))
+        self.roc_aucs = []
 

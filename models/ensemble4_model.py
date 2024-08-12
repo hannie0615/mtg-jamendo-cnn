@@ -9,6 +9,12 @@ roc_aucs=[]
 class MyEnsemble4(pl.LightningModule):
     def __init__(self, modelA, modelB, modelC, modelD):
         super(MyEnsemble4, self).__init__()
+        self.roc_aucs = []
+        self.train_loss = []
+        self.valid_loss = []
+        self.valid_total_loss = []
+        self.train_total_loss = []
+
         self.modelA = modelA
         self.modelB = modelB
         self.modelC = modelC
@@ -40,18 +46,40 @@ class MyEnsemble4(pl.LightningModule):
     def training_step(self, batch, batch_idx):
         x, y, _ = batch
         # x = x.unsqueeze(1)
-        return F.binary_cross_entropy_with_logits(self.forward(x), y)
+        loss = F.binary_cross_entropy_with_logits(self.forward(x), y)
+        self.train_total_loss.append(loss)
+        return loss
+
+    def on_train_epoch_end(self):
+        print("\n train loss : ", sum(self.train_total_loss) / len(self.train_total_loss))
+        self.train_loss.append(sum(self.train_total_loss) / len(self.train_total_loss))
+        self.train_total_loss = []
 
     def validation_step(self, batch, batch_idx):
         x, y, _ = batch
-        return F.binary_cross_entropy_with_logits(self.forward(x), y)
+        loss = F.binary_cross_entropy_with_logits(self.forward(x), y)
+        rocauc = roc_auc_score(y.t().cpu(), self.forward(x).t().cpu())
+        self.roc_aucs.append(rocauc)
+        self.valid_total_loss.append(loss)
+        self.log("val_loss", torch.tensor([loss]))
+
+        return {'val_loss': loss}
+
+    def on_validation_epoch_end(self):
+        print("\n valid loss : ", sum(self.valid_total_loss) / len(self.valid_total_loss))
+        self.valid_loss.append(sum(self.valid_total_loss) / len(self.valid_total_loss))
+        self.valid_total_loss = []
+        print("\n valid roc auc : ", sum(self.roc_aucs) / len(self.roc_aucs))
+        self.roc_aucs = []
 
     def test_step(self, batch, batch_idx):
         x, y, _ = batch
         y_hat = self.forward(x)
         rocauc = roc_auc_score(y.t().cpu(), y_hat.t().cpu(), average='macro')
-        roc_aucs.append(rocauc)
+        self.roc_aucs.append(rocauc)
         return F.binary_cross_entropy_with_logits(y_hat, y)
 
+
     def on_test_epoch_end(self):
-        print("\n test roc auc : ", sum(roc_aucs) / len(roc_aucs))
+        print("\n test roc auc : ", sum(self.roc_aucs) / len(self.roc_aucs))
+        self.roc_aucs = []

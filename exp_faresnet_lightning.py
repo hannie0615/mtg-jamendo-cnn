@@ -25,7 +25,7 @@ def initialize_weights(module):
 config = {
     'epochs': 10,    # => test roc auc : 0.7479618212865566
     'batch_size': 32,
-    'root': 'D:/Mtg-jamendo-dataset/melspecs',
+    'root': './data/melspecs',
     'tag_path': './tags',
     'model_save_path': './trained/faresnet/'
 }
@@ -58,12 +58,18 @@ def run():
     val_dataloader = DataLoader(val_dataset, batch_size=batch_size, shuffle=True, num_workers=0)
     test_dataloader = DataLoader(test_dataset, batch_size=batch_size, shuffle=True, num_workers=0)
 
-    model = FaResNet(BasicBlock)
-    print(model)
+    # model = FaResNet(block=BasicBlock)
+    # print(model)
+    model = FaResNet.load_from_checkpoint('trained/faresnet/faresnet-epoch=10-val_loss=6.12.ckpt')
 
     checkpoint = ModelCheckpoint(
-        dirpath=model_save_path
+        save_top_k=1,
+        monitor="val_loss",
+        mode="min",
+        dirpath=model_save_path,
+        filename="faresnet-{epoch:02d}-{val_loss:.2f}",
     )
+
     trainer = Trainer(max_epochs=epochs, callbacks=[checkpoint])
     trainer.fit(model, train_dataloader, val_dataloader)
     trainer.test(model, test_dataloader)

@@ -38,12 +38,12 @@ def run():
     train_data, val_data, test_data = data_load(root=config['root'], tag=config['tag_path'])
 
     train_dataloader = DataLoader(train_data, batch_size=batch_size, shuffle=True, num_workers=0)
-    val_dataloader = DataLoader(val_data, batch_size=batch_size, shuffle=True, num_workers=0)
-    test_dataloader = DataLoader(test_data, batch_size=batch_size, shuffle=True, num_workers=0)
+    val_dataloader = DataLoader(val_data, batch_size=batch_size, shuffle=False, num_workers=0)
+    test_dataloader = DataLoader(test_data, batch_size=batch_size, shuffle=False, num_workers=0)
 
 
     # 모델 초기화
-    model1 = FaResNet(BasicBlock)
+    model1 = FaResNet(block=BasicBlock, num_classes=56)
     model2 = ResNet34()
     model3 = VggNet()
     model4 = CRNN_esb()
@@ -53,8 +53,13 @@ def run():
     # 모델 앙상블
     print(ensemble_model)
 
+    # Save model
     checkpoint = ModelCheckpoint(
+        save_top_k=1,
+        monitor="val_loss",
+        mode="min",
         dirpath=model_save_path,
+        filename="everything-{epoch:02d}-{val_loss:.2f}",
     )
     trainer = pl.Trainer(max_epochs=epochs, callbacks=[checkpoint])
 

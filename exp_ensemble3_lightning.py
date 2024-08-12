@@ -13,7 +13,7 @@ from torch.utils.data import DataLoader
 config = {
     'epochs': 10,    # 200
     'batch_size': 32,
-    'root': './data/melspecs_5',
+    'root': './data',
     'tag_path': './tags',
     'model_save_path': './trained/ensemble3/'
 }
@@ -35,21 +35,27 @@ def run():
     train_data, val_data, test_data = data_load(root=config['root'], tag=config['tag_path'])
 
     train_dataloader = DataLoader(train_data, batch_size=batch_size, shuffle=True, num_workers=0)
-    val_dataloader = DataLoader(val_data, batch_size=batch_size, shuffle=True, num_workers=0)
-    test_dataloader = DataLoader(test_data, batch_size=batch_size, shuffle=True, num_workers=0)
+    val_dataloader = DataLoader(val_data, batch_size=batch_size, shuffle=False, num_workers=0)
+    test_dataloader = DataLoader(test_data, batch_size=batch_size, shuffle=False, num_workers=0)
 
     # 모델 초기화
-    model1 = FaResNet(BasicBlock)
+    model1 = FaResNet(block=BasicBlock, num_classes=56)
     model2 = CRNN_esb()
 
-    ensemble_model = MyEnsemble1(model1, model2)
+    ensemble_model = MyEnsemble1(modelA=model1, modelB=model2)
 
     # 모델 앙상블
     print(ensemble_model)
 
+    # Save model
     checkpoint = ModelCheckpoint(
+        save_top_k=1,
+        monitor="val_loss",
+        mode="min",
         dirpath=model_save_path,
+        filename="faresnet+crnn-{epoch:02d}-{val_loss:.2f}",
     )
+
     trainer = pl.Trainer(max_epochs=epochs, callbacks=[checkpoint])
 
     trainer.fit(ensemble_model, train_dataloader, val_dataloader)

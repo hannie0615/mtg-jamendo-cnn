@@ -8,6 +8,13 @@ roc_aucs=[]
 class BaseModel(pl.LightningModule):
     def __init__(self, num_class=56):
         super(BaseModel, self).__init__()
+        self.roc_aucs = []
+        self.train_loss = []
+        self.valid_loss = []
+        self.valid_total_loss = []
+        self.train_total_loss = []
+
+        self.learning_rate = 1e-3
 
         # init bn
         self.bn_init = nn.BatchNorm2d(1)
@@ -57,26 +64,45 @@ class BaseModel(pl.LightningModule):
     def training_step(self, batch, batch_idx):
         x, y, _ = batch
         y_hat = self(x)
-        loss = F.cross_entropy(y_hat, y)
-        return loss
+        train_loss = F.cross_entropy(y_hat, y)
+        self.train_total_loss.append(train_loss)
+        return train_loss
+
+    def on_train_epoch_end(self):
+        print("\n train loss : ", sum(self.train_total_loss) / len(self.train_total_loss))
+        self.train_loss.append(sum(self.train_total_loss) / len(self.train_total_loss))
+        self.train_total_loss = []
 
     def validation_step(self, batch, batch_idx):
         x, y, _ = batch
         logits = self(x)
-        # acc = FM.accuracy(logits, y)     # `task` 추가: to either be `'binary'`, `'multiclass'` or `'multilabel'` but got class
-        loss = F.cross_entropy(logits, y)
+        valid_loss = F.cross_entropy(logits, y)
+        rocauc = roc_auc_score(y.t().cpu(), logits.t().cpu())
+        self.roc_aucs.append(rocauc)
+        self.valid_total_loss.append(valid_loss)
+        self.log("val_loss", torch.tensor([valid_loss]))
+
+        return valid_loss
+
+    def on_validation_epoch_end(self):
+        print("\n valid loss : ", sum(self.valid_total_loss) / len(self.valid_total_loss))
+        self.valid_loss.append(sum(self.valid_total_loss) / len(self.valid_total_loss))
+        self.valid_total_loss = []
 
     def test_step(self, batch, batch_idx):
         x, y, _ = batch
         logits = self(x)
-        # acc = FM.accuracy(logits, y)
-        loss = F.cross_entropy(logits, y)
+        test_loss = F.cross_entropy(logits, y)
+        # test roc auc 출력 위함
         rocauc = roc_auc_score(y.t().cpu(), logits.t().cpu())
-        roc_aucs.append(rocauc)
+
+        self.roc_aucs.append(rocauc)
+        return test_loss
 
     def configure_optimizers(self):
-        return torch.optim.Adam(self.parameters(), lr=1e-3)
+        return torch.optim.Adam(self.parameters(), lr=self.learning_rate)
 
     def on_test_epoch_end(self):
-        print("\n test roc auc : ", sum(roc_aucs) / len(roc_aucs))
+        print("\n test roc auc : ", sum(self.roc_aucs) / len(self.roc_aucs))
+        self.roc_aucs = []
 
