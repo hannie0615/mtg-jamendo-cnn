@@ -10,9 +10,9 @@ import pytorch_lightning as pl
 from dataloader import data_load
 
 config = {
-    'epochs': 200,    # 200
+    'epochs': 40,    # 200
     'batch_size': 32,
-    'root': './data/',
+    'root': './data/melspecs_5',
     'tag_path': './tags',
     'model_save_path': './trained/ensemble2/'
 }
@@ -30,7 +30,7 @@ def run():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     # 데이터 로더 만들기
-    train_data, val_data, test_data = data_load(root=config['root'], tag=config['tag_path'])
+    train_data, val_data, test_data = data_load(root=config['root'], tag=config['tag_path'], annotation=True)
 
     train_dataloader = DataLoader(train_data, batch_size=batch_size, shuffle=True, num_workers=0)
     val_dataloader = DataLoader(val_data, batch_size=batch_size, shuffle=False, num_workers=0)
@@ -43,12 +43,12 @@ def run():
     # 모델 앙상블
     ensemble_model = MyEnsemble2(model1, model2)
     # ensemble_model = nn.ModuleList([model1, model2])
-    ensemble_model = MyEnsemble2.load_from_checkpoint('trained/ensemble2/vggnet+crnn-epoch=102-val_loss=6.52.ckpt')
+    # ensemble_model = MyEnsemble2.load_from_checkpoint('trained/ensemble2/vggnet+crnn-epoch=102-val_loss=6.52.ckpt')
     print(ensemble_model)
 
     # Save model
     checkpoint = ModelCheckpoint(
-        save_top_k=1,
+        save_top_k=10,
         monitor="val_loss",
         mode="min",
         dirpath=model_save_path,
@@ -58,7 +58,15 @@ def run():
 
     trainer.fit(ensemble_model, train_dataloader, val_dataloader)
     trainer.test(ensemble_model, test_dataloader)
-
+    ## 연속 테스트
+    # trained_path = './trained/ensemble2'
+    # file_list = os.listdir(trained_path)
+    #
+    # for tf in file_list:
+    #     path = os.path.join(trained_path, tf)
+    #     etf = MyEnsemble2.load_from_checkpoint(path)
+    #     print(path)
+    #     trainer.test(etf, test_dataloader)
 
 if __name__ == '__main__':
     run()

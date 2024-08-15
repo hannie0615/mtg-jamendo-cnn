@@ -8,7 +8,7 @@ import io
 def download_and_unzip(url, extract_to):
     # ZIP 파일을 다운로드할 임시 파일 경로 설정
 
-    local_zip_path = os.path.join(extract_to, 'melspecs_5sec.zip')
+    local_zip_path = os.path.join(extract_to, 'melspecs_5.zip')
 
     # 폴더가 존재하지 않으면 생성
     if not os.path.exists(extract_to):

@@ -2,12 +2,16 @@ import torch
 import torch.nn.functional as F
 import pytorch_lightning as pl
 from sklearn.metrics import roc_auc_score
+from models.resnet_model import ResNet34
+from models.faresnet_model import FaResNet
+from models.vggnet_model import VggNet
+from models.crnn_model import CRNN_esb
 
 roc_aucs=[]
 
 # FaResNet+ResNet34+VggNet+ CRNN
 class MyEnsemble4(pl.LightningModule):
-    def __init__(self, modelA, modelB, modelC, modelD):
+    def __init__(self, modelA=FaResNet(), modelB=ResNet34(), modelC=VggNet(), modelD=CRNN_esb()):
         super(MyEnsemble4, self).__init__()
         self.roc_aucs = []
         self.train_loss = []

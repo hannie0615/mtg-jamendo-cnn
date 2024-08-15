@@ -60,7 +60,7 @@ class FaResNet(pl.LightningModule):
         self.roc_auc = []
 
     def read_taglist(self):
-        fn = 'C:/Users/KETI/moodwalk-master/moodwalk-master/scripts/models/tag_list.npy'
+        fn = './models/tag_list.npy'
         npy = np.load(fn)
         return npy
 

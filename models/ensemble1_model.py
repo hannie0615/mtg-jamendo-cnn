@@ -3,6 +3,7 @@ import torch.nn.functional as F
 import pytorch_lightning as pl
 from sklearn.metrics import roc_auc_score
 from models.resnet_model import ResNet34
+from models.faresnet_model import FaResNet
 from models.crnn_model import CRNN_esb
 
 

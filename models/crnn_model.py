@@ -25,7 +25,7 @@ class CRNN(pl.LightningModule):
         self.gru_hidden_size = 32
         self.gru_num_layers = 2
         self.drop_prob = 0.2
-        self.learning_rate = 0.001     # 0.0005
+        self.learning_rate = 0.0005     # 0.0005
         self.validation_metrics = ['rocauc', 'prauc']
         self.test_metrics = ['rocauc', 'prauc']
 
@@ -42,7 +42,7 @@ class CRNN(pl.LightningModule):
         self.bn_2 = nn.BatchNorm2d(128)
         self.mp_2 = nn.MaxPool2d((2, 4))
 
-        # layer 3
+        # # layer 3
         self.conv_3 = nn.Conv2d(128, 128, 3, padding=1)
         self.bn_3 = nn.BatchNorm2d(128)
         self.mp_3 = nn.MaxPool2d((2, 4))
@@ -62,6 +62,10 @@ class CRNN(pl.LightningModule):
                            hidden_size=self.gru_hidden_size,
                            num_layers=self.gru_num_layers
                            )
+        self.lstm = nn.LSTM(input_size=32,
+                            hidden_size=self.gru_hidden_size,
+                            num_layers=self.gru_num_layers,
+                            bidirectional=False, batch_first=True)
 
         # classifier
         self.dense = nn.Linear(self.gru_hidden_size, num_class)
@@ -91,7 +95,8 @@ class CRNN(pl.LightningModule):
 
             def rnn_forward(x):
                 x = x.squeeze()
-                x = self.gru1(x)[0][-1]  # TODO: Check if this is correct
+                # x = self.gru1(x)[0][-1]  # TODO: Check if this is correct
+                x = self.lstm(x)[0][-1]
                 x = self.dropout(x)
                 logit = nn.Sigmoid()(self.dense(x))
                 return logit
@@ -144,7 +149,7 @@ class CRNN(pl.LightningModule):
             x = nn.ELU()(self.bn_2(self.conv_2(x)))
             # x = self.mp_2(nn.ELU()(self.bn_2(self.conv_2(x))))
 
-            # layer 3
+            # # layer 3
             x = self.mp_3(nn.ELU()(self.bn_3(self.conv_3(x))))
 
             # layer 4
@@ -153,12 +158,14 @@ class CRNN(pl.LightningModule):
             # layer 5
             x = self.mp_5(nn.ELU()(self.bn_5(self.conv_5(x))))
 
+
             # classifier
             x = x.view(-1, x.size(0), 32)
 
             # output, hidden = self.gru(x_pack)
             # x = self.gru1(x)[0][-1] # TODO: Check if this is correct
             x = self.gru1(x)[1][1]  # TODO: Check if this is correct
+            # x = self.lstm(x)[0][-1]
 
             x = self.dropout(x)
             logit = nn.Sigmoid()(self.dense(x))

@@ -31,7 +31,7 @@ def data_clmr_load(root):
 
 
 # train, validation, test 데이터셋 만들기
-def data_load(root='./data', tag='./tags', annotation = False):
+def data_load(root='./data', tag='./tags', annotation=False):
     train_data = []
     val_data = []
     test_data = []
@@ -55,6 +55,7 @@ def data_load(root='./data', tag='./tags', annotation = False):
             length = 0  # length = int(audio.shape[1] / 2)
 
             if mode == 'train':
+                length = 0
                 for i in range(3):
                     slice = audio[:, length:length + 512]
                     if slice.shape[1] != 512:  # 꼭 필요
@@ -70,6 +71,7 @@ def data_load(root='./data', tag='./tags', annotation = False):
                 # train_data.append([audio.astype('float32'), tags.astype('float32'), dict[idx]['path']])
 
             elif mode == 'validation':
+                length = 0
                 for i in range(3):
                     slice = audio[:, length:length + 512]
                     if slice.shape[1] != 512:  # 꼭 필요
@@ -85,16 +87,12 @@ def data_load(root='./data', tag='./tags', annotation = False):
                 # val_data.append([audio.astype('float32'), tags.astype('float32'), dict[idx]['path']])
 
             else:
+                length = 0
                 for i in range(3):
                     slice = audio[:, length:length + 512]
                     if slice.shape[1] != 512:  # 꼭 필요
                         break
-                    if annotation:
-                        slices = augmentations(slice)
-                        for j in range(3):
-                            test_data.append([slices[j].astype('float32'), tags.astype('float32'), dict[idx]['path']])
-                    elif annotation is False:
-                        test_data.append([slice.astype('float32'), tags.astype('float32'), dict[idx]['path']])
+                    test_data.append([slice.astype('float32'), tags.astype('float32'), dict[idx]['path']])
 
                     length += 512
                 # test_data.append([audio.astype('float32'), tags.astype('float32'), dict[idx]['path']])

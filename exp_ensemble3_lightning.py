@@ -11,9 +11,9 @@ from pytorch_lightning.callbacks import ModelCheckpoint
 from torch.utils.data import DataLoader
 
 config = {
-    'epochs': 10,    # 200
+    'epochs': 50,    # 200
     'batch_size': 32,
-    'root': './data',
+    'root': './data/melspecs_5',
     'tag_path': './tags',
     'model_save_path': './trained/ensemble3/'
 }
@@ -45,11 +45,11 @@ def run():
     ensemble_model = MyEnsemble1(modelA=model1, modelB=model2)
 
     # 모델 앙상블
-    print(ensemble_model)
+    # print(ensemble_model)
 
     # Save model
     checkpoint = ModelCheckpoint(
-        save_top_k=1,
+        save_top_k=10,
         monitor="val_loss",
         mode="min",
         dirpath=model_save_path,
@@ -58,8 +58,17 @@ def run():
 
     trainer = pl.Trainer(max_epochs=epochs, callbacks=[checkpoint])
 
-    trainer.fit(ensemble_model, train_dataloader, val_dataloader)
-    trainer.test(ensemble_model, test_dataloader)
+    # trainer.fit(ensemble_model, train_dataloader, val_dataloader)
+    # trainer.test(ensemble_model, test_dataloader)
+    ## 연속 테스트
+    trained_path = './trained/ensemble3'
+    file_list = os.listdir(trained_path)
+
+    for tf in file_list:
+        path = os.path.join(trained_path, tf)
+        etf = MyEnsemble1.load_from_checkpoint(path)
+        print(path)
+        trainer.test(etf, test_dataloader)
 
 
 if __name__ == '__main__':

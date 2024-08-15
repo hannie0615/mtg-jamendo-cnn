@@ -13,7 +13,7 @@ import pytorch_lightning as pl
 
 
 config = {
-    'epochs': 10,    # 200
+    'epochs': 50,    # 200
     'batch_size': 32,
     'root': './data/melspecs_5',
     'tag_path': './tags',
@@ -55,7 +55,7 @@ def run():
 
     # Save model
     checkpoint = ModelCheckpoint(
-        save_top_k=1,
+        save_top_k=10,
         monitor="val_loss",
         mode="min",
         dirpath=model_save_path,
@@ -63,8 +63,17 @@ def run():
     )
     trainer = pl.Trainer(max_epochs=epochs, callbacks=[checkpoint])
 
-    trainer.fit(ensemble_model, train_dataloader, val_dataloader)
-    trainer.test(ensemble_model, test_dataloader)
+    # trainer.fit(ensemble_model, train_dataloader, val_dataloader)
+    # trainer.test(ensemble_model, test_dataloader)
+    ## 연속 테스트
+    trained_path = './trained/ensemble4'
+    file_list = os.listdir(trained_path)
+
+    for tf in file_list:
+        path = os.path.join(trained_path, tf)
+        etf = MyEnsemble4.load_from_checkpoint(path)
+        print(path)
+        trainer.test(etf, test_dataloader)
 
 
 
