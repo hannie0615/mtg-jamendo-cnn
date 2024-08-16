@@ -26,6 +26,25 @@ _Q. 데이터(.wav, .mel) 다운로드 받는 경로
 _A. https://github.com/MTG/mtg-jamendo-dataset
 
 
+### Experiment  
+: CNN 실험 대상으로 아래의 모델을 활용.  
+1-1. ResNet34  
+[paper](https://arxiv.org/abs/1512.03385)    
+1-2. VggNet  
+[paper](https://arxiv.org/abs/1409.1556)  
+1-3. CRNN  
+[paper](https://arxiv.org/abs/1507.05717)    
+1-4. FaResNet  
+[paper](https://arxiv.org/abs/1911.05833)    
+1-5. Conformer  
+[paper](https://nbviewer.org/github/IliaZenkov/transformer_cnn_parallel_audio_classification/blob/main/notebooks/Parallel_is_All_You_Want.ipynb)  
+1-6. Contrastive Learning(pre-trained)  
+[paper](https://arxiv.org/abs/2002.05709)  
+
+et al. ensemble
+
+
+
 ### 실행문
 
 - 가상환경 설정
