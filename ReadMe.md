@@ -22,7 +22,7 @@
 _Q. data/melspecs_5를 사용하는 이유?_  
 _A. 학습 시 데이터를 로드하는 시간 단축_
 
-_Q. 데이터(.wav, .mel) 다운로드 받는 경로
+_Q. 데이터(.wav, .mel) 다운로드 받는 경로  
 _A. https://github.com/MTG/mtg-jamendo-dataset
 
 
