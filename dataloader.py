@@ -46,7 +46,7 @@ def data_load(root='./data', tag='./tags', annotation=False):
         print(fn)
         for idx in range(len(dict)):
             if idx % 100 == 0:
-                print(str(idx)+'/'+str(len(dict)))
+                print(str(mode)+' (loading) : '+str(idx)+'/'+str(len(dict)))
 
             tags = dict[idx]['tags']
             fn = os.path.join(root, dict[idx]['path'][:-3] + 'npy')

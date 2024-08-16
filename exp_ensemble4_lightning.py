@@ -13,11 +13,12 @@ import pytorch_lightning as pl
 
 
 config = {
-    'epochs': 50,    # 200
+    'epochs': 200,    # 200
     'batch_size': 32,
     'root': './data/melspecs_5',
     'tag_path': './tags',
-    'model_save_path': './trained/ensemble4/'
+    'model_save_path': './trained/ensemble4/',
+    'mode':'TEST'
 }
 
 
@@ -63,19 +64,26 @@ def run():
     )
     trainer = pl.Trainer(max_epochs=epochs, callbacks=[checkpoint])
 
-    # trainer.fit(ensemble_model, train_dataloader, val_dataloader)
-    # trainer.test(ensemble_model, test_dataloader)
-    ## 연속 테스트
-    trained_path = './trained/ensemble4'
-    file_list = os.listdir(trained_path)
+    if config['mode'] == 'TRAIN':
+        trainer.fit(model, train_dataloader, val_dataloader)
+        trainer.test(model, test_dataloader)
 
-    for tf in file_list:
-        path = os.path.join(trained_path, tf)
-        etf = MyEnsemble4.load_from_checkpoint(path)
-        print(path)
-        trainer.test(etf, test_dataloader)
+    elif config['mode'] == 'TEST':
+        trained_model_path = os.path.join(model_save_path, 'everything-epoch=130-val_loss=0.13.ckpt')
+        model = MyEnsemble4.load_from_checkpoint(trained_model_path)
+        trainer.test(model, test_dataloader)
 
+    else:
+        print("check your MODE")
 
+    ## model save path 안에 있는 모든 ckpt 파일을 한번에 test 하기(필요한 경우만 사용)
+    # file_list = os.listdir(model_save_path)
+    #
+    # for tf in file_list:
+    #     path = os.path.join(model_save_path, tf)
+    #     etf = MyEnsemble4.load_from_checkpoint(path)
+    #     print(path)
+    #     trainer.test(etf, test_dataloader)
 
 
 if __name__ == '__main__':

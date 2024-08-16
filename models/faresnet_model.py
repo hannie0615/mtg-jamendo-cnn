@@ -195,9 +195,6 @@ class FaResNet(pl.LightningModule):
         roc_aucs = metrics.roc_auc_score(gt_array, prd_array, average='macro')
         pr_aucs = metrics.average_precision_score(gt_array, prd_array, average='macro')
 
-        print('roc_auc: %.4f' % roc_aucs)
-        print('pr_auc: %.4f' % pr_aucs)
-
         roc_auc_all = metrics.roc_auc_score(gt_array, prd_array, average=None)
         pr_auc_all = metrics.average_precision_score(gt_array, prd_array, average=None)
 

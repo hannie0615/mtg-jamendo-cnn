@@ -23,11 +23,12 @@ def initialize_weights(module):
         module.bias.data.zero_()
 
 config = {
-    'epochs': 10,    # => test roc auc : 0.7479618212865566
+    'epochs': 200,    # => test roc auc : 0.7479618212865566
     'batch_size': 32,
-    'root': './data/melspecs',
+    'root': './data/melspecs_5',
     'tag_path': './tags',
-    'model_save_path': './trained/faresnet/'
+    'model_save_path': './trained/faresnet/',
+    'mode': 'TEST-', # TRAIN or TEST
 }
 
 layer_index_total = 0
@@ -40,7 +41,6 @@ def run():
     # rho = 5
     # mixup = 1
 
-    # configs/cp_resnet.json 참고
     batch_size = config['batch_size']     # 128
     epochs = config['epochs']
     model_save_path = config['model_save_path']
@@ -58,9 +58,9 @@ def run():
     val_dataloader = DataLoader(val_dataset, batch_size=batch_size, shuffle=True, num_workers=0)
     test_dataloader = DataLoader(test_dataset, batch_size=batch_size, shuffle=True, num_workers=0)
 
-    # model = FaResNet(block=BasicBlock)
+    model = FaResNet(block=BasicBlock)
     # print(model)
-    model = FaResNet.load_from_checkpoint('trained/faresnet/faresnet-epoch=10-val_loss=6.12.ckpt')
+    # model = FaResNet.load_from_checkpoint('trained/faresnet/faresnet-epoch=10-val_loss=6.12.ckpt')
 
     checkpoint = ModelCheckpoint(
         save_top_k=1,
@@ -71,9 +71,26 @@ def run():
     )
 
     trainer = Trainer(max_epochs=epochs, callbacks=[checkpoint])
-    trainer.fit(model, train_dataloader, val_dataloader)
-    trainer.test(model, test_dataloader)
+    if config['mode'] == 'TRAIN':
+        trainer.fit(model, train_dataloader, val_dataloader)
+        trainer.test(model, test_dataloader)
 
+    elif config['mode'] == 'TEST':
+        trained_model_path = os.path.join(model_save_path, 'crnn-epoch=136-val_loss=6.45.ckpt')
+        model = FaResNet.load_from_checkpoint(trained_model_path)
+        trainer.test(model, test_dataloader)
+
+    else:
+        print("check your MODE")
+
+    ## model save path 안에 있는 모든 ckpt 파일을 한번에 test 하기(필요한 경우만 사용)
+    # file_list = os.listdir(model_save_path)
+    #
+    # for tf in file_list:
+    #     path = os.path.join(model_save_path, tf)
+    #     etf = FaResNet.load_from_checkpoint(path)
+    #     print(path)
+    #     trainer.test(etf, test_dataloader)
 
 
 if __name__ == '__main__':

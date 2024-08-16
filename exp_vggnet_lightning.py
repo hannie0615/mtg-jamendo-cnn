@@ -7,11 +7,12 @@ from torch.utils.data import DataLoader
 from pytorch_lightning import Trainer
 
 config = {
-    'epochs': 10,    # 200
+    'epochs': 200,    # 200
     'batch_size': 32,
     'root': './data/melspecs_5',
     'tag_path': './tags',
-    'model_save_path': './trained/vggnet/'
+    'model_save_path': './trained/vggnet/',
+    'mode': 'TEST', # TRAIN or TEST
 }
 
 def run():
@@ -33,20 +34,27 @@ def run():
     test_dataloader = DataLoader(test_data, batch_size=batch_size, shuffle=False, num_workers=0)
 
     checkpoint = ModelCheckpoint(
-        save_top_k=1,
+        save_top_k=1, # 상위 1개 저장
         monitor="val_loss",
         mode="min",
         dirpath=model_save_path,
         filename="vggnet-{epoch:02d}-{val_loss:.2f}",
     )
-
+    model = VggNet()
     trainer = Trainer(max_epochs=epochs, callbacks=[checkpoint])
 
-    model = VggNet()
-    # print(model)
-    trainer.fit(model, train_dataloader, val_dataloader)
-    trainer.test(model, test_dataloader)
 
+    if config['mode'] == 'TRAIN':
+        trainer.fit(model, train_dataloader, val_dataloader)
+        trainer.test(model, test_dataloader)
+
+    elif config['mode'] == 'TEST':
+        trained_model_path = os.path.join(model_save_path, 'vggnet-epoch=162-val_loss=0.12.ckpt')
+        model = VggNet.load_from_checkpoint(trained_model_path)
+        trainer.test(model, test_dataloader)
+
+    else:
+        print("check your MODE")
 
 
 # Press the green button in the gutter to run the script.

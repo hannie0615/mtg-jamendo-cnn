@@ -9,12 +9,13 @@ from dataloader import data_load
 
 
 config = {
-    'epochs': 10,    # 200
+    'epochs': 200,    # 200
     'batch_size': 32,
     'lr': 1e-4,
     'root': './data/melspecs_5',
     'tag_path': './tags',
-    'model_save_path': './trained/resnet/'
+    'model_save_path': './trained/resnet/',
+    'mode': 'TEST',
 }
 
 def run():
@@ -29,7 +30,7 @@ def run():
         os.makedirs(model_save_path)
 
     # 데이터 로더 만들기
-    train_data, val_data, test_data = data_load(root=config['root'], tag=config['tag_path'])
+    train_data, val_data, test_data = data_load(root=config['root'], tag=config['tag_path'], annotation=True)
 
     train_dataloader = DataLoader(train_data, batch_size=batch_size, shuffle=True, num_workers=0)
     val_dataloader = DataLoader(val_data, batch_size=batch_size, shuffle=False, num_workers=0)
@@ -42,22 +43,26 @@ def run():
     # print(model)
 
     checkpoint = ModelCheckpoint(
-        save_top_k=1,
+        save_top_k=10,
         monitor="val_loss",
         mode="min",
         dirpath=model_save_path,
         filename="resnet-{epoch:02d}-{val_loss:.2f}",
     )
-
+    model = ResNet34()
     trainer = Trainer(max_epochs=epochs, callbacks=[checkpoint])  # default_root_dir='./models/',
 
-    model = ResNet34()
-    trainer.fit(model, train_dataloader, val_dataloader)
-    trainer.test(model, test_dataloader)
+    if config['mode']=='TRAIN':
+        trainer.fit(model, train_dataloader, val_dataloader)
+        trainer.test(model, test_dataloader)
 
+    elif config['mode']=='TEST':
+        trained_model_path = os.path.join(model_save_path, 'resnet-epoch=183-val_loss=6.34.ckpt')
+        model = ResNet34.load_from_checkpoint(trained_model_path)
+        trainer.test(model, test_dataloader)
 
-
-
+    else:
+        print("check your MODE")
 
 
 # Press the green button in the gutter to run the script.

@@ -15,7 +15,8 @@ config = {
     'batch_size': 8,
     'root': './data/melspecs_5',
     'tag_path': './tags',
-    'model_save_path': './trained/crnn_anno/'
+    'model_save_path': './trained/crnn/',
+    'mode': 'TEST', # TRAIN or TEST
 }
 
 
@@ -40,8 +41,6 @@ def run():
     val_dataloader = DataLoader(val_data, batch_size=batch_size, shuffle=True, num_workers=0)
     test_dataloader = DataLoader(test_data, batch_size=batch_size, shuffle=False, num_workers=0)
 
-    # 모델 선언하기
-    model = CRNN(num_class=56)
     # Save model
     checkpoint = ModelCheckpoint(
         save_top_k=10,
@@ -50,20 +49,21 @@ def run():
         dirpath=model_save_path,
         filename="crnn-{epoch:02d}-{val_loss:.2f}",
     )
+    # 모델 선언하기
+    model = CRNN(num_class=56)
     trainer = pl.Trainer(max_epochs=epochs, callbacks=[checkpoint])
 
-    # print(model)
-    # trainer.fit(model, train_dataloader, val_dataloader)
-    # trainer.test(model, test_dataloader)
-    ## 연속 테스트
-    trained_path = './trained/crnn'
-    file_list = os.listdir(trained_path)
+    if config['mode'] == 'TRAIN':
+        trainer.fit(model, train_dataloader, val_dataloader)
+        trainer.test(model, test_dataloader)
 
-    for tf in file_list:
-        path = os.path.join(trained_path, tf)
-        etf = CRNN.load_from_checkpoint(path)
-        print(path)
-        trainer.test(etf, test_dataloader)
+    elif config['mode'] == 'TEST':
+        trained_model_path = os.path.join(model_save_path, 'crnn-epoch=136-val_loss=6.45.ckpt')
+        model = CRNN.load_from_checkpoint(trained_model_path)
+        trainer.test(model, test_dataloader)
+
+    else:
+        print("check your MODE")
 
 
 

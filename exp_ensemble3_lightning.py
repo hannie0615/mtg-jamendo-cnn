@@ -1,4 +1,4 @@
-from models.ensemble1_model import MyEnsemble1
+from models.ensemble3_model import MyEnsemble3
 from models.faresnet_model import FaResNet
 from models.resnet_arch import BasicBlock
 from models.crnn_model import CRNN_esb
@@ -11,11 +11,12 @@ from pytorch_lightning.callbacks import ModelCheckpoint
 from torch.utils.data import DataLoader
 
 config = {
-    'epochs': 50,    # 200
+    'epochs': 100,    # 200
     'batch_size': 32,
     'root': './data/melspecs_5',
     'tag_path': './tags',
-    'model_save_path': './trained/ensemble3/'
+    'model_save_path': './trained/ensemble3/',
+    'mode':'TEST'
 }
 
 def run():
@@ -42,7 +43,7 @@ def run():
     model1 = FaResNet(block=BasicBlock, num_classes=56)
     model2 = CRNN_esb()
 
-    ensemble_model = MyEnsemble1(modelA=model1, modelB=model2)
+    model = MyEnsemble3(modelA=model1, modelB=model2)
 
     # 모델 앙상블
     # print(ensemble_model)
@@ -58,17 +59,17 @@ def run():
 
     trainer = pl.Trainer(max_epochs=epochs, callbacks=[checkpoint])
 
-    # trainer.fit(ensemble_model, train_dataloader, val_dataloader)
-    # trainer.test(ensemble_model, test_dataloader)
-    ## 연속 테스트
-    trained_path = './trained/ensemble3'
-    file_list = os.listdir(trained_path)
+    if config['mode'] == 'TRAIN':
+        trainer.fit(model, train_dataloader, val_dataloader)
+        trainer.test(model, test_dataloader)
 
-    for tf in file_list:
-        path = os.path.join(trained_path, tf)
-        etf = MyEnsemble1.load_from_checkpoint(path)
-        print(path)
-        trainer.test(etf, test_dataloader)
+    elif config['mode'] == 'TEST':
+        trained_model_path = os.path.join(model_save_path, 'faresnet+crnn-epoch=149-val_loss=0.13.ckpt')
+        model = MyEnsemble3.load_from_checkpoint(trained_model_path)
+        trainer.test(model, test_dataloader)
+
+    else:
+        print("check your MODE")
 
 
 if __name__ == '__main__':
